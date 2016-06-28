@@ -27,9 +27,9 @@ class CloudConfigurationBuilder {
     private String credentialPassword;
     private String apiName;
     private String apiInternalProvider;
-    private long hardwareId;
-    private long locationId;
-    private long imageId;
+    private String hardwareId;
+    private String locationId;
+    private String imageId;
     private String imageLoginName;
     private String imageOperatingSystem;
     private Map<String, String> properties;
@@ -64,17 +64,17 @@ class CloudConfigurationBuilder {
         return this;
     }
 
-    public CloudConfigurationBuilder hardwareId(long hardwareId) {
+    public CloudConfigurationBuilder hardwareId(String hardwareId) {
         this.hardwareId = hardwareId;
         return this;
     }
 
-    public CloudConfigurationBuilder locationId(long locationId) {
+    public CloudConfigurationBuilder locationId(String locationId) {
         this.locationId = locationId;
         return this;
     }
 
-    public CloudConfigurationBuilder imageId(long imageId) {
+    public CloudConfigurationBuilder imageId(String imageId) {
         this.imageId = imageId;
         return this;
     }
@@ -84,7 +84,7 @@ class CloudConfigurationBuilder {
         return this;
     }
 
-    public CloudConfigurationBuilder imageOperatingSystem(String imageOperatingSystem) {
+    public CloudConfigurationBuilder imageOperatingSystemVendor(String imageOperatingSystem) {
         this.imageOperatingSystem = imageOperatingSystem;
         return this;
     }

@@ -1,14 +1,15 @@
 package io.github.cloudiator.examples.internal;
 
 import com.google.common.base.Optional;
+import com.google.common.collect.Maps;
 import de.uniulm.omi.cloudiator.colosseum.client.Client;
 import de.uniulm.omi.cloudiator.colosseum.client.ClientBuilder;
 
-
-
+import javax.annotation.Nullable;
 import java.util.*;
 
 import static com.google.common.base.Preconditions.checkNotNull;
+import static com.google.common.base.Preconditions.checkState;
 
 /**
  * Created by daniel on 27.06.16.
@@ -38,8 +39,15 @@ public class ConfigurationLoader {
             builder
                 .credentialPassword(config.getString(cloud + ".cloud.credential.password").get());
             builder.apiName(config.getString(cloud + ".api.name").get());
-            builder.apiInternalProvider(config.getString(cloud + ".api.interalProviderName").get());
-            //Todo...
+            builder
+                .apiInternalProvider(config.getString(cloud + ".api.internalProviderName").get());
+            builder.imageId(config.getString(cloud + ".image.providerId").get());
+            builder.imageOperatingSystemVendor(
+                config.getString(cloud + ".image.operatingSystemVendor").get());
+            builder.locationId(config.getString(cloud + ".location.providerId ").get());
+            builder.hardwareId(config.getString(cloud + ".hardware.providerId").get());
+            builder.properties(config.loadMap(cloud + ".properties").get());
+            //todo check
             configurations.add(builder.createCloudConfiguration());
         }
 
@@ -47,11 +55,12 @@ public class ConfigurationLoader {
     }
 
     public interface Configuration {
+
         Optional<String> getString(String key);
 
         Optional<List<String>> loadList(String key);
 
-        Optional<Long> getLong(String key);
+        Optional<Map<String, String>> loadMap(String key);
     }
 
 
@@ -64,7 +73,9 @@ public class ConfigurationLoader {
         }
 
         @Override public Optional<String> getString(String key) {
-            return Optional.fromNullable(properties.getProperty(key));
+            key = key.trim();
+            final String property = properties.getProperty(key);
+            return Optional.fromNullable(property);
         }
 
         @Override public Optional<List<String>> loadList(String key) {
@@ -72,11 +83,25 @@ public class ConfigurationLoader {
             if (!value.isPresent()) {
                 return Optional.absent();
             }
-            return Optional.of(Arrays.asList(properties.getProperty("clouds").split(",")));
+            final String[] strings = properties.getProperty(key).split(",");
+            String[] trimmedArray = new String[strings.length];
+            for (int i = 0; i < strings.length; i++)
+                trimmedArray[i] = strings[i].trim();
+            return Optional.of(Arrays.asList(trimmedArray));
         }
 
-        @Override public Optional<Long> getLong(String key) {
-            return Optional.fromNullable(Long.valueOf(properties.getProperty(key)));
+        @Override public Optional<Map<String, String>> loadMap(String key) {
+            if (!loadList(key).isPresent()) {
+                return Optional.absent();
+            }
+            final List<String> keyValuePairs = loadList(key).get();
+            final Map<String, String> map = Maps.newHashMapWithExpectedSize(keyValuePairs.size());
+            for (String keyValuePair : keyValuePairs) {
+                final String[] strings = keyValuePair.split("=");
+                checkState(strings.length == 2);
+                map.put(strings[0], strings[1]);
+            }
+            return Optional.of(map);
         }
     }
 
@@ -84,36 +109,52 @@ public class ConfigurationLoader {
     public static class CloudConfiguration {
 
         private final String name;
-        private final String endpoint;
+        @Nullable private final String endpoint;
         private final String credentialUsername;
         private final String credentialPassword;
         private final String apiName;
         private final String apiInternalProvider;
-        private final long hardwareId;
-        private final long locationId;
-        private final long imageId;
+        private final String hardwareId;
+        private final String locationId;
+        private final String imageId;
         private final String imageLoginName;
-        private final String imageOperatingSystem;
+        private final String imageOperatingSystemVendor;
         private final Map<String, String> properties;
 
 
-        public CloudConfiguration(String name, String endpoint, String credentialUsername,
-            String credentialPassword, String apiName, String apiInternalProvider, long hardwareId,
-            long locationId, long imageId, String imageLoginName, String imageOperatingSystem,
-            Map<String, String> properties) {
+        public CloudConfiguration(String name, @Nullable String endpoint, String credentialUsername,
+            String credentialPassword, String apiName, String apiInternalProvider,
+            String hardwareId, String locationId, String imageId, String imageLoginName,
+            String imageOperatingSystemVendor, Map<String, String> properties) {
 
             checkNotNull(name);
             this.name = name;
+
             this.endpoint = endpoint;
+
+            checkNotNull(credentialUsername);
             this.credentialUsername = credentialUsername;
+
+            checkNotNull(credentialPassword);
             this.credentialPassword = credentialPassword;
+
+            checkNotNull(apiName);
             this.apiName = apiName;
+
+            checkNotNull(apiInternalProvider);
             this.apiInternalProvider = apiInternalProvider;
+
+            checkNotNull(hardwareId);
             this.hardwareId = hardwareId;
+
+            checkNotNull(locationId);
             this.locationId = locationId;
+
+            checkNotNull(imageId);
             this.imageId = imageId;
+
             this.imageLoginName = imageLoginName;
-            this.imageOperatingSystem = imageOperatingSystem;
+            this.imageOperatingSystemVendor = imageOperatingSystemVendor;
             this.properties = properties;
         }
 
@@ -121,7 +162,7 @@ public class ConfigurationLoader {
             return name;
         }
 
-        public String getEndpoint() {
+        @Nullable public String getEndpoint() {
             return endpoint;
         }
 
@@ -141,15 +182,15 @@ public class ConfigurationLoader {
             return apiInternalProvider;
         }
 
-        public long getHardwareId() {
+        public String getHardwareId() {
             return hardwareId;
         }
 
-        public long getLocationId() {
+        public String getLocationId() {
             return locationId;
         }
 
-        public long getImageId() {
+        public String getImageId() {
             return imageId;
         }
 
@@ -157,8 +198,8 @@ public class ConfigurationLoader {
             return imageLoginName;
         }
 
-        public String getImageOperatingSystem() {
-            return imageOperatingSystem;
+        public String getImageOperatingSystemVendor() {
+            return imageOperatingSystemVendor;
         }
 
         public Map<String, String> getProperties() {
