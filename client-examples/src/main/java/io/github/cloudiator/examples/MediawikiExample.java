@@ -56,15 +56,25 @@ public class MediawikiExample {
 
         //create the lifecycle components
 
+        String downloadCommand =
+            "sudo apt-get -y update && sudo apt-get -y install git && git clone https://github.com/dbaur/mediawiki-tutorial.git";
+
         LifecycleComponent loadBalancer = client.controller(LifecycleComponent.class).create(
-            new LifecycleComponentBuilder().name("LoadBalancer").preInstall("install")
-                .postInstall("configure").start("start").build());
+            new LifecycleComponentBuilder().name("LoadBalancer").preInstall(downloadCommand)
+                .install("./mediawiki-tutorial/scripts/lance/nginx.sh install")
+                .start("./mediawiki-tutorial/scripts/lance/nginx.sh startBlocking").build());
+
         LifecycleComponent wiki = client.controller(LifecycleComponent.class).create(
-            new LifecycleComponentBuilder().name("MediaWiki").preInstall("install")
-                .postInstall("configure").start("start").build());
+            new LifecycleComponentBuilder().name("MediaWiki").preInstall(downloadCommand)
+                .install("./mediawiki-tutorial/scripts/lance/mediawiki.sh install")
+                .postInstall("./mediawiki-tutorial/scripts/lance/mediawiki.sh configure")
+                .start("./mediawiki-tutorial/scripts/lance/mediawiki.sh startBlocking").build());
+
         LifecycleComponent mariaDB = client.controller(LifecycleComponent.class).create(
-            new LifecycleComponentBuilder().name("MariaDB").preInstall("install")
-                .postInstall("configure").start("start").build());
+            new LifecycleComponentBuilder().name("MariaDB").preInstall(downloadCommand)
+                .install("./mediawiki-tutorial/scripts/lance/mariaDB.sh install")
+                .postInstall("./mediawiki-tutorial/scripts/lance/mariaDB.sh configure")
+                .start("./mediawiki-tutorial/scripts/lance/mariaDB.sh startBlocking").build());
 
         //create the application
         Application application = client.controller(Application.class)
@@ -144,6 +154,25 @@ public class MediawikiExample {
 
         final VirtualMachine lbVM = client.controller(VirtualMachine.class).create(
             VirtualMachineBuilder.of(loadBalancerVirtualMachineTemplate).name("lbVM").build());
+
+        // create the application instance
+        final ApplicationInstance appInstance = client.controller(ApplicationInstance.class)
+            .create(new ApplicationInstanceBuilder().application(application.getId()).build());
+
+        // create the instances
+
+        final Instance lbInstance = client.controller(Instance.class).create(
+            new InstanceBuilder().applicationComponent(loadBalancerApplicationComponent.getId())
+                .applicationInstance(appInstance.getId()).virtualMachine(lbVM.getId()).build());
+
+        final Instance wikiInstance = client.controller(Instance.class).create(
+            new InstanceBuilder().applicationComponent(wikiApplicationComponent.getId())
+                .applicationInstance(appInstance.getId()).virtualMachine(wikiVM.getId()).build());
+
+        final Instance dbInstance = client.controller(Instance.class).create(
+            new InstanceBuilder().applicationComponent(mariaDBApplicationComponent.getId())
+                .applicationInstance(appInstance.getId()).virtualMachine(mariaDBVM.getId())
+                .build());
 
     }
 
