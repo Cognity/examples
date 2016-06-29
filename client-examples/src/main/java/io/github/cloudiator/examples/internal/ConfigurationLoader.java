@@ -44,7 +44,7 @@ public class ConfigurationLoader {
             builder.imageId(config.getString(cloud + ".image.providerId").get());
             builder.imageOperatingSystemVendor(
                 config.getString(cloud + ".image.operatingSystemVendor").get());
-            builder.locationId(config.getString(cloud + ".location.providerId ").get());
+            builder.locationId(config.getString(cloud + ".location.providerId").get());
             builder.hardwareId(config.getString(cloud + ".hardware.providerId").get());
             builder.properties(config.loadMap(cloud + ".properties").get());
             //todo check
@@ -73,8 +73,10 @@ public class ConfigurationLoader {
         }
 
         @Override public Optional<String> getString(String key) {
-            key = key.trim();
-            final String property = properties.getProperty(key);
+            String property = properties.getProperty(key);
+            if (property != null) {
+                property = property.trim();
+            }
             return Optional.fromNullable(property);
         }
 
