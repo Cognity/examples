@@ -21,6 +21,7 @@ import de.uniulm.omi.cloudiator.colosseum.client.entities.*;
 import io.github.cloudiator.examples.internal.CloudHelper;
 import io.github.cloudiator.examples.internal.ConfigurationLoader;
 
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -28,6 +29,7 @@ import java.util.Collections;
 import java.util.Properties;
 import java.util.Set;
 
+import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
 
 /**
@@ -37,9 +39,16 @@ public class MediawikiExample {
 
     public static void main(String[] args) throws IOException {
 
+        final String configFileProperty = System.getProperty("config.file");
+        checkArgument(configFileProperty != null,
+            "Missing parameter config.file, use -Dconfig.file parameters");
+        final File file = new File(configFileProperty);
+        checkArgument(file.exists() && file.isFile(), String
+            .format("Could not find file %s, check the -Dconfig.file option",
+                file.getAbsolutePath()));
+
         Properties properties = new Properties();
-        final FileInputStream fileInputStream =
-            new FileInputStream("client-examples/config/example.properties");
+        final FileInputStream fileInputStream = new FileInputStream(file);
         properties.load(fileInputStream);
         fileInputStream.close();
 
