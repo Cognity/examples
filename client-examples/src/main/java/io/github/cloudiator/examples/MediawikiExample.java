@@ -131,7 +131,7 @@ public class MediawikiExample {
         final PortRequired loadbalancerreqwiki = client.controller(PortRequired.class).create(
             new PortRequiredBuilder().name("LOADBALANCERREQWIKI")
                 .applicationComponent(loadBalancerApplicationComponent.getId()).isMandatory(false)
-                .updateAction("update").build());
+                .updateAction("./mediawiki-tutorial/scripts/lance/nginx.sh configure").build());
 
         //create the communication
 
