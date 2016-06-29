@@ -8,24 +8,34 @@ colosseum.tenant = admin
 # Cloud configuration
 
 # Comma seperated list of all clouds
-clouds = cloud1, cloud2
-
+clouds = cloud1
 
 ## all configuration options should be present by using cloudName + PropertyName ##
 
 ### cloud 1
-cloud1.cloud.name = cloud1
+# A name to identify the cloud
+cloud1.cloud.name = cloud1Name
+# The endpoint of the cloud
 cloud1.cloud.endpoint = http://api.endpoint.com
-cloud1.cloud.credential.username =
-cloud1.cloud.credential.password =
-cloud1.api.name =
-cloud1.api.internalProviderName =
-cloud1.hardware.providerId =
-cloud1.location.providerId =
-cloud1.image.providerId =
+# The username used for authentication at the cloud endpoint
+cloud1.cloud.credential.username = my:username
+# The password used for authentication at the cloud endpoint
+cloud1.cloud.credential.password = VerySecretPassword
+# A name to identify the api
+cloud1.api.name = apiName
+# The internal driver name to use, e.g. openstack-nova for Openstack
+cloud1.api.internalProviderName = providerName
+# The unique id for the image at the provider
+cloud1.image.providerId = 1234
+# The unique id for the location at the provider
+cloud1.location.providerId = 1234
+# The unique id for the hardware at the provider
+cloud1.hardware.providerId = 1234
+# The login name for the image, currently ignored
 cloud1.image.loginName =
-cloud1.image.operatingSystem =
+# The vendor for the operating system, should be Ubuntu
+cloud1.image.operatingSystemVendor = Ubuntu
 
-# comma seperated list of key=value pairs
+# A comma separated list of key=value pairs
 cloud1.properties = key=value, key=value
 
