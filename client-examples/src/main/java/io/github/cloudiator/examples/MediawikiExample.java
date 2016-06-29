@@ -41,7 +41,7 @@ public class MediawikiExample {
 
         final String configFileProperty = System.getProperty("config.file");
         checkArgument(configFileProperty != null,
-            "Missing parameter config.file, use -Dconfig.file parameters");
+            "Missing parameter config.file, use -Dconfig.file parameter");
         final File file = new File(configFileProperty);
         checkArgument(file.exists() && file.isFile(), String
             .format("Could not find file %s, check the -Dconfig.file option",
@@ -182,7 +182,6 @@ public class MediawikiExample {
             new InstanceBuilder().applicationComponent(mariaDBApplicationComponent.getId())
                 .applicationInstance(appInstance.getId()).virtualMachine(mariaDBVM.getId())
                 .build());
-
     }
 
     private static ConfigurationLoader.CloudConfiguration random(
@@ -193,5 +192,7 @@ public class MediawikiExample {
         Collections.shuffle(list);
         return list.get(0);
     }
+
+
 
 }
