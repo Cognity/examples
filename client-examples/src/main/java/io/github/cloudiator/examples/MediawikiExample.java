@@ -18,7 +18,7 @@ package io.github.cloudiator.examples;/*
 
 import de.uniulm.omi.cloudiator.colosseum.client.Client;
 import de.uniulm.omi.cloudiator.colosseum.client.entities.*;
-import de.uniulm.omi.cloudiator.colosseum.client.entities.enums.RemoteState;
+import de.uniulm.omi.cloudiator.colosseum.client.entities.enums.*;
 import io.github.cloudiator.examples.internal.CloudHelper;
 import io.github.cloudiator.examples.internal.ConfigurationLoader;
 
@@ -29,6 +29,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Properties;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 import static com.google.common.base.Preconditions.*;
 
@@ -186,6 +187,74 @@ public class MediawikiExample {
         waitForInstance(client, lbInstance);
         waitForInstance(client, wikiInstance);
         waitForInstance(client, dbInstance);
+
+        final Schedule tenSeconds = client.controller(Schedule.class)
+            .create(new ScheduleBuilder().interval(10L).timeUnit(TimeUnit.SECONDS).build());
+        final TimeWindow minuteWindow = client.controller(TimeWindow.class)
+            .create(new TimeWindowBuilder().interval(1L).timeUnit(TimeUnit.MINUTES).build());
+        final FormulaQuantifier relativeOneFormulaQuantifier =
+            client.controller(FormulaQuantifier.class)
+                .create(new FormulaQuantifierBuilder().relative(true).value(1.0).build());
+        final FormulaQuantifier absoluteOneFormulaQuantifier =
+            client.controller(FormulaQuantifier.class)
+                .create(new FormulaQuantifierBuilder().relative(false).value(1.0).build());
+
+        final SensorDescription cpuUsageDescription = client.controller(SensorDescription.class)
+            .create(new SensorDescriptionBuilder()
+                .className("de.uniulm.omi.cloudiator.visor.sensors.SystemCpuUsageSensor")
+                .isVmSensor(true).metricName("wikiCpuUsage").build());
+        final SensorDescription apacheRequestDescription =
+            client.controller(SensorDescription.class).create(new SensorDescriptionBuilder()
+                .className("de.uniulm.omi.cloudiator.visor.sensors.apache.ApacheStatusSensor")
+                .isVmSensor(true).metricName("apacheRequestsPerSecond").build());
+
+
+        final SensorConfigurations cpuUsageConfiguration =
+            client.controller(SensorConfigurations.class)
+                .create(new SensorConfigurationsBuilder().build());
+        //todo add keyvalue pairs
+        final SensorConfigurations apacheRequestConfiguration =
+            client.controller(SensorConfigurations.class)
+                .create(new SensorConfigurationsBuilder().build());
+
+        final RawMonitor wikiCPUUsage = client.controller(RawMonitor.class).create(
+            new RawMonitorBuilder().component(wiki.getId()).schedule(tenSeconds.getId())
+                .sensorConfigurations(cpuUsageConfiguration.getId())
+                .sensorDescription(cpuUsageDescription.getId()).build());
+        //final RawMonitor apacheRequest = client.controller(RawMonitor.class).create(
+        //    new RawMonitorBuilder().component(wiki.getId()).schedule(tenSeconds.getId())
+        //        .sensorConfigurations(apacheRequestConfiguration.getId())
+        //        .sensorDescription(apacheRequestDescription.getId()).build());
+
+        final ComposedMonitor averageWikiCpuUsage1Minute = client.controller(ComposedMonitor.class)
+            .create(new ComposedMonitorBuilder().addMonitor(wikiCPUUsage.getId())
+                .window(minuteWindow.getId()).flowOperator(FlowOperator.MAP)
+                .function(FormulaOperator.AVG).quantifier(relativeOneFormulaQuantifier.getId())
+                .schedule(tenSeconds.getId()).build());
+
+        final ConstantMonitor threshold60 = client.controller(ConstantMonitor.class)
+            .create(new ConstantMonitorBuilder().value(60.0).build());
+
+        final ComposedMonitor averageWikiCpuUsageIsAboveThreshold60 =
+            client.controller(ComposedMonitor.class).create(
+                new ComposedMonitorBuilder().addMonitor(averageWikiCpuUsage1Minute.getId())
+                    .addMonitor(threshold60.getId()).schedule(tenSeconds.getId())
+                    .window(minuteWindow.getId()).flowOperator(FlowOperator.MAP)
+                    .quantifier(relativeOneFormulaQuantifier.getId()).function(FormulaOperator.GTE)
+                    .build());
+
+        final ComposedMonitor countWikiCpuUsageIsAboveThreshold60 =
+            client.controller(ComposedMonitor.class).create(new ComposedMonitorBuilder()
+                .addMonitor(averageWikiCpuUsageIsAboveThreshold60.getId())
+                .schedule(tenSeconds.getId()).window(minuteWindow.getId())
+                .flowOperator(FlowOperator.REDUCE).function(FormulaOperator.SUM)
+                .quantifier(absoluteOneFormulaQuantifier.getId()).build());
+
+        final MonitorSubscription atLeastOneWikiCpuUsageisAboveThreshold60 =
+            client.controller(MonitorSubscription.class).create(
+                new MonitorSubscriptionBuilder().type(SubscriptionType.SCALING)
+                    .filterType(FilterType.GTE).filterValue(1.0)
+                    .endpoint("http://localhost:9000/api").build());
     }
 
     private static ConfigurationLoader.CloudConfiguration random(
