@@ -195,9 +195,6 @@ public class MediawikiExample {
         final FormulaQuantifier relativeOneFormulaQuantifier =
             client.controller(FormulaQuantifier.class)
                 .create(new FormulaQuantifierBuilder().relative(true).value(1.0).build());
-        final FormulaQuantifier absoluteOneFormulaQuantifier =
-            client.controller(FormulaQuantifier.class)
-                .create(new FormulaQuantifierBuilder().relative(false).value(1.0).build());
 
         final SensorDescription cpuUsageDescription = client.controller(SensorDescription.class)
             .create(new SensorDescriptionBuilder()
@@ -248,13 +245,13 @@ public class MediawikiExample {
                 .addMonitor(averageWikiCpuUsageIsAboveThreshold60.getId())
                 .schedule(tenSeconds.getId()).window(minuteWindow.getId())
                 .flowOperator(FlowOperator.REDUCE).function(FormulaOperator.SUM)
-                .quantifier(absoluteOneFormulaQuantifier.getId()).build());
+                .quantifier(relativeOneFormulaQuantifier.getId()).build());
 
         final MonitorSubscription atLeastOneWikiCpuUsageisAboveThreshold60 =
             client.controller(MonitorSubscription.class).create(
                 new MonitorSubscriptionBuilder().type(SubscriptionType.SCALING)
-                    .filterType(FilterType.GTE).filterValue(1.0)
-                    .endpoint("http://localhost:9000/api").build());
+                    .monitor(countWikiCpuUsageIsAboveThreshold60.getId()).filterType(FilterType.GTE)
+                    .filterValue(1.0).endpoint("http://localhost:9000/api").build());
     }
 
     private static ConfigurationLoader.CloudConfiguration random(
