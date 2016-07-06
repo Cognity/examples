@@ -18,6 +18,7 @@ package io.github.cloudiator.examples;/*
 
 import de.uniulm.omi.cloudiator.colosseum.client.Client;
 import de.uniulm.omi.cloudiator.colosseum.client.entities.*;
+import de.uniulm.omi.cloudiator.colosseum.client.entities.enums.RemoteState;
 import io.github.cloudiator.examples.internal.CloudHelper;
 import io.github.cloudiator.examples.internal.ConfigurationLoader;
 
@@ -29,8 +30,7 @@ import java.util.Collections;
 import java.util.Properties;
 import java.util.Set;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Preconditions.checkState;
+import static com.google.common.base.Preconditions.*;
 
 /**
  * Created by daniel on 27.06.16.
@@ -182,6 +182,10 @@ public class MediawikiExample {
             new InstanceBuilder().applicationComponent(mariaDBApplicationComponent.getId())
                 .applicationInstance(appInstance.getId()).virtualMachine(mariaDBVM.getId())
                 .build());
+
+        waitForInstance(client, lbInstance);
+        waitForInstance(client, wikiInstance);
+        waitForInstance(client, dbInstance);
     }
 
     private static ConfigurationLoader.CloudConfiguration random(
@@ -193,6 +197,21 @@ public class MediawikiExample {
         return list.get(0);
     }
 
-
-
+    private static void waitForInstance(Client client, Instance instance) {
+        while (!RemoteState.OK.equals(instance.getRemoteState())) {
+            if (RemoteState.ERROR.equals(instance.getRemoteState())) {
+                throw new RuntimeException("Starting of instance failed");
+            }
+            try {
+                Thread.sleep(5000);
+                instance = client.controller(Instance.class).get(instance.getId());
+                checkNotNull(instance);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        }
+    }
 }
+
+
+
