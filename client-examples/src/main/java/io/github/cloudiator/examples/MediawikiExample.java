@@ -38,6 +38,10 @@ import static com.google.common.base.Preconditions.*;
  */
 public class MediawikiExample {
 
+    /* TODO correct these values: */
+    private static double threshold = 0.0;
+    private static double minInstancesAboveThreshold = 0.0;
+
     public static void main(String[] args) throws IOException {
 
         final String configFileProperty = System.getProperty("config.file");
@@ -229,29 +233,29 @@ public class MediawikiExample {
                 .function(FormulaOperator.AVG).quantifier(relativeOneFormulaQuantifier.getId())
                 .schedule(tenSeconds.getId()).build());
 
-        final ConstantMonitor threshold60 = client.controller(ConstantMonitor.class)
-            .create(new ConstantMonitorBuilder().value(60.0).build());
+        final ConstantMonitor thresholdMonitor = client.controller(ConstantMonitor.class)
+            .create(new ConstantMonitorBuilder().value(threshold).build());
 
-        final ComposedMonitor averageWikiCpuUsageIsAboveThreshold60 =
+        final ComposedMonitor averageWikiCpuUsageIsAboveThreshold =
             client.controller(ComposedMonitor.class).create(
                 new ComposedMonitorBuilder().addMonitor(averageWikiCpuUsage1Minute.getId())
-                    .addMonitor(threshold60.getId()).schedule(tenSeconds.getId())
+                    .addMonitor(thresholdMonitor.getId()).schedule(tenSeconds.getId())
                     .window(minuteWindow.getId()).flowOperator(FlowOperator.MAP)
                     .quantifier(relativeOneFormulaQuantifier.getId()).function(FormulaOperator.GTE)
                     .build());
 
-        final ComposedMonitor countWikiCpuUsageIsAboveThreshold60 =
+        final ComposedMonitor countWikiCpuUsageIsAboveThreshold =
             client.controller(ComposedMonitor.class).create(new ComposedMonitorBuilder()
-                .addMonitor(averageWikiCpuUsageIsAboveThreshold60.getId())
+                .addMonitor(averageWikiCpuUsageIsAboveThreshold.getId())
                 .schedule(tenSeconds.getId()).window(minuteWindow.getId())
                 .flowOperator(FlowOperator.REDUCE).function(FormulaOperator.SUM)
                 .quantifier(relativeOneFormulaQuantifier.getId()).build());
 
-        final MonitorSubscription atLeastOneWikiCpuUsageisAboveThreshold60 =
+        final MonitorSubscription atLeastOneWikiCpuUsageisAboveThreshold =
             client.controller(MonitorSubscription.class).create(
                 new MonitorSubscriptionBuilder().type(SubscriptionType.SCALING)
-                    .monitor(countWikiCpuUsageIsAboveThreshold60.getId()).filterType(FilterType.GTE)
-                    .filterValue(1.0).endpoint("http://localhost:9000/api").build());
+                    .monitor(countWikiCpuUsageIsAboveThreshold.getId()).filterType(FilterType.GTE)
+                    .filterValue(minInstancesAboveThreshold).endpoint("http://localhost:9000/api").build());
     }
 
     private static ConfigurationLoader.CloudConfiguration random(
