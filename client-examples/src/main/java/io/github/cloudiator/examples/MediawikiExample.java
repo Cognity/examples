@@ -37,6 +37,14 @@ import static com.google.common.base.Preconditions.*;
  */
 public class MediawikiExample {
 
+    private enum LB {
+        HAPROXY,
+        NGINX
+    }
+
+
+    private static final LB lb = LB.HAPROXY;
+
     public static void main(String[] args) throws IOException {
 
         final String configFileProperty = System.getProperty("config.file");
@@ -68,10 +76,25 @@ public class MediawikiExample {
         String downloadCommand =
             "sudo apt-get -y update && sudo apt-get -y install git && git clone https://github.com/dbaur/mediawiki-tutorial.git";
 
-        LifecycleComponent loadBalancer = client.controller(LifecycleComponent.class).create(
-            new LifecycleComponentBuilder().name("LoadBalancer").preInstall(downloadCommand)
-                .install("./mediawiki-tutorial/scripts/lance/nginx.sh install")
-                .start("./mediawiki-tutorial/scripts/lance/nginx.sh startBlocking").build());
+        final LifecycleComponent loadBalancer;
+        switch (lb) {
+            case HAPROXY:
+                loadBalancer = client.controller(LifecycleComponent.class).create(
+                    new LifecycleComponentBuilder().name("LoadBalancer").preInstall(downloadCommand)
+                        .install("./mediawiki-tutorial/scripts/lance/nginx.sh install")
+                        .start("./mediawiki-tutorial/scripts/lance/nginx.sh startBlocking")
+                        .build());
+                break;
+            case NGINX:
+                loadBalancer = client.controller(LifecycleComponent.class).create(
+                    new LifecycleComponentBuilder().name("LoadBalancer").preInstall(downloadCommand)
+                        .install("./mediawiki-tutorial/scripts/lance/nginx.sh install")
+                        .start("./mediawiki-tutorial/scripts/lance/nginx.sh startBlocking")
+                        .build());
+                break;
+            default:
+                throw new AssertionError();
+        }
 
         LifecycleComponent wiki = client.controller(LifecycleComponent.class).create(
             new LifecycleComponentBuilder().name("MediaWiki").preInstall(downloadCommand)
