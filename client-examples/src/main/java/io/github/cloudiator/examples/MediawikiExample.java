@@ -81,15 +81,15 @@ public class MediawikiExample {
             case HAPROXY:
                 loadBalancer = client.controller(LifecycleComponent.class).create(
                     new LifecycleComponentBuilder().name("LoadBalancer").preInstall(downloadCommand)
-                        .install("./mediawiki-tutorial/scripts/lance/nginx.sh install")
-                        .start("./mediawiki-tutorial/scripts/lance/nginx.sh startBlocking")
+                        .install("./mediawiki-tutorial/scripts/lance/haproxy.sh install")
+                        .start("./mediawiki-tutorial/scripts/lance/haproxy.sh startBlocking")
                         .build());
                 break;
             case NGINX:
                 loadBalancer = client.controller(LifecycleComponent.class).create(
                     new LifecycleComponentBuilder().name("LoadBalancer").preInstall(downloadCommand)
-                        .install("./mediawiki-tutorial/scripts/lance/nginx.sh install")
-                        .start("./mediawiki-tutorial/scripts/lance/nginx.sh startBlocking")
+                        .install("./mediawiki-tutorial/scripts/lance/haproxy.sh install")
+                        .start("./mediawiki-tutorial/scripts/lance/haproxy.sh startBlocking")
                         .build());
                 break;
             default:
