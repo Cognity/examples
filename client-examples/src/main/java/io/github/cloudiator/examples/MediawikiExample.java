@@ -45,10 +45,10 @@ public class MediawikiExample {
     }
 
 
-    private static final LB lb = LB.HAPROXY;
+    private static final LB lb = LB.NGINX;
     /* TODO correct these values: */
-    private static double threshold = 0.0;
-    private static double minInstancesAboveThreshold = 0.0;
+    private static double threshold = 70;
+    private static double minInstancesAboveThreshold = 1;
 
     public static void main(String[] args) throws IOException {
 
@@ -93,8 +93,8 @@ public class MediawikiExample {
             case NGINX:
                 loadBalancer = client.controller(LifecycleComponent.class).create(
                     new LifecycleComponentBuilder().name("LoadBalancer").preInstall(downloadCommand)
-                        .install("./mediawiki-tutorial/scripts/lance/haproxy.sh install")
-                        .start("./mediawiki-tutorial/scripts/lance/haproxy.sh startBlocking")
+                        .install("./mediawiki-tutorial/scripts/lance/nginx.sh install")
+                        .start("./mediawiki-tutorial/scripts/lance/nginx.sh startBlocking")
                         .build());
                 break;
             default:
@@ -165,10 +165,30 @@ public class MediawikiExample {
         final PortProvided lbprov = client.controller(PortProvided.class).create(
             new PortProvidedBuilder().name("LBPROV")
                 .applicationComponent(loadBalancerApplicationComponent.getId()).port(80).build());
-        final PortRequired loadbalancerreqwiki = client.controller(PortRequired.class).create(
-            new PortRequiredBuilder().name("LOADBALANCERREQWIKI")
-                .applicationComponent(loadBalancerApplicationComponent.getId()).isMandatory(false)
-                .updateAction("./mediawiki-tutorial/scripts/lance/nginx.sh configure").build());
+
+
+        PortRequired loadbalancerreqwiki;
+        switch (lb) {
+            case NGINX:
+                loadbalancerreqwiki = client.controller(PortRequired.class).create(
+                    new PortRequiredBuilder().name("LOADBALANCERREQWIKI")
+                        .applicationComponent(loadBalancerApplicationComponent.getId())
+                        .isMandatory(false)
+                        .updateAction("./mediawiki-tutorial/scripts/lance/nginx.sh configure")
+                        .build());
+                break;
+            case HAPROXY:
+                loadbalancerreqwiki = client.controller(PortRequired.class).create(
+                    new PortRequiredBuilder().name("LOADBALANCERREQWIKI")
+                        .applicationComponent(loadBalancerApplicationComponent.getId())
+                        .isMandatory(false)
+                        .updateAction("./mediawiki-tutorial/scripts/lance/haproxy.sh configure")
+                        .build());
+                break;
+            default:
+                throw new AssertionError("unknown lb");
+        }
+
 
         //create the communication
 
