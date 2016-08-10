@@ -2,6 +2,7 @@ package io.github.cloudiator.examples.internal;
 
 import com.google.common.base.Optional;
 import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 import de.uniulm.omi.cloudiator.colosseum.client.Client;
 import de.uniulm.omi.cloudiator.colosseum.client.ClientBuilder;
 
@@ -42,9 +43,8 @@ public class ConfigurationLoader {
             builder
                 .apiInternalProvider(config.getString(cloud + ".api.internalProviderName").get());
             builder.imageId(config.getString(cloud + ".image.providerId").get());
-            builder.imageOperatingSystemVendor(
-                config.getString(cloud + ".image.operatingSystemVendor").get());
-            builder.locationId(config.getString(cloud + ".location.providerId").get());
+            builder
+                .locationId(Sets.newHashSet(config.loadList(cloud + ".location.providerId").get()));
             builder.hardwareId(config.getString(cloud + ".hardware.providerId").get());
             builder.properties(config.loadMap(cloud + ".properties").get());
             //todo check
@@ -117,17 +117,16 @@ public class ConfigurationLoader {
         private final String apiName;
         private final String apiInternalProvider;
         private final String hardwareId;
-        private final String locationId;
+        private final Set<String> locationId;
         private final String imageId;
         private final String imageLoginName;
-        private final String imageOperatingSystemVendor;
         private final Map<String, String> properties;
 
 
         public CloudConfiguration(String name, @Nullable String endpoint, String credentialUsername,
             String credentialPassword, String apiName, String apiInternalProvider,
-            String hardwareId, String locationId, String imageId, String imageLoginName,
-            String imageOperatingSystemVendor, Map<String, String> properties) {
+            String hardwareId, Set<String> locationId, String imageId, String imageLoginName,
+            Map<String, String> properties) {
 
             checkNotNull(name);
             this.name = name;
@@ -156,7 +155,6 @@ public class ConfigurationLoader {
             this.imageId = imageId;
 
             this.imageLoginName = imageLoginName;
-            this.imageOperatingSystemVendor = imageOperatingSystemVendor;
             this.properties = properties;
         }
 
@@ -189,7 +187,9 @@ public class ConfigurationLoader {
         }
 
         public String getLocationId() {
-            return locationId;
+            ArrayList<String> ids = new ArrayList<>(locationId);
+            Collections.shuffle(ids);
+            return ids.get(0);
         }
 
         public String getImageId() {
@@ -198,10 +198,6 @@ public class ConfigurationLoader {
 
         public String getImageLoginName() {
             return imageLoginName;
-        }
-
-        public String getImageOperatingSystemVendor() {
-            return imageOperatingSystemVendor;
         }
 
         public Map<String, String> getProperties() {

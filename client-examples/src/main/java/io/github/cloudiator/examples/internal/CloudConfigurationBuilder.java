@@ -19,6 +19,7 @@
 package io.github.cloudiator.examples.internal;
 
 import java.util.Map;
+import java.util.Set;
 
 class CloudConfigurationBuilder {
     private String name;
@@ -28,10 +29,9 @@ class CloudConfigurationBuilder {
     private String apiName;
     private String apiInternalProvider;
     private String hardwareId;
-    private String locationId;
+    private Set<String> locationId;
     private String imageId;
     private String imageLoginName;
-    private String imageOperatingSystem;
     private Map<String, String> properties;
 
     public CloudConfigurationBuilder name(String name) {
@@ -69,7 +69,7 @@ class CloudConfigurationBuilder {
         return this;
     }
 
-    public CloudConfigurationBuilder locationId(String locationId) {
+    public CloudConfigurationBuilder locationId(Set<String> locationId) {
         this.locationId = locationId;
         return this;
     }
@@ -85,7 +85,6 @@ class CloudConfigurationBuilder {
     }
 
     public CloudConfigurationBuilder imageOperatingSystemVendor(String imageOperatingSystem) {
-        this.imageOperatingSystem = imageOperatingSystem;
         return this;
     }
 
@@ -97,6 +96,6 @@ class CloudConfigurationBuilder {
     public ConfigurationLoader.CloudConfiguration createCloudConfiguration() {
         return new ConfigurationLoader.CloudConfiguration(name, endpoint, credentialUsername,
             credentialPassword, apiName, apiInternalProvider, hardwareId, locationId, imageId,
-            imageLoginName, imageOperatingSystem, properties);
+            imageLoginName, properties);
     }
 }

@@ -26,10 +26,7 @@ import io.github.cloudiator.examples.internal.ConfigurationLoader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Properties;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 import static com.google.common.base.Preconditions.*;
@@ -40,15 +37,15 @@ import static com.google.common.base.Preconditions.*;
 public class MediawikiExample {
 
     private enum LB {
-        HAPROXY,
-        NGINX
+        HAPROXY, NGINX
     }
 
 
-    private static final LB lb = LB.NGINX;
+    private static final LB lb = LB.HAPROXY;
     /* TODO correct these values: */
     private static double threshold = 70;
     private static double minInstancesAboveThreshold = 1;
+    private static long maxInstances = 5;
 
     public static void main(String[] args) throws IOException {
 
@@ -84,14 +81,14 @@ public class MediawikiExample {
         final LifecycleComponent loadBalancer;
         switch (lb) {
             case HAPROXY:
-                loadBalancer = client.controller(LifecycleComponent.class).create(
+                loadBalancer = client.controller(LifecycleComponent.class).updateOrCreate(
                     new LifecycleComponentBuilder().name("LoadBalancer").preInstall(downloadCommand)
                         .install("./mediawiki-tutorial/scripts/lance/haproxy.sh install")
                         .start("./mediawiki-tutorial/scripts/lance/haproxy.sh startBlocking")
                         .build());
                 break;
             case NGINX:
-                loadBalancer = client.controller(LifecycleComponent.class).create(
+                loadBalancer = client.controller(LifecycleComponent.class).updateOrCreate(
                     new LifecycleComponentBuilder().name("LoadBalancer").preInstall(downloadCommand)
                         .install("./mediawiki-tutorial/scripts/lance/nginx.sh install")
                         .start("./mediawiki-tutorial/scripts/lance/nginx.sh startBlocking")
@@ -101,13 +98,13 @@ public class MediawikiExample {
                 throw new AssertionError();
         }
 
-        LifecycleComponent wiki = client.controller(LifecycleComponent.class).create(
+        LifecycleComponent wiki = client.controller(LifecycleComponent.class).updateOrCreate(
             new LifecycleComponentBuilder().name("MediaWiki").preInstall(downloadCommand)
                 .install("./mediawiki-tutorial/scripts/lance/mediawiki.sh install")
                 .postInstall("./mediawiki-tutorial/scripts/lance/mediawiki.sh configure")
                 .start("./mediawiki-tutorial/scripts/lance/mediawiki.sh startBlocking").build());
 
-        LifecycleComponent mariaDB = client.controller(LifecycleComponent.class).create(
+        LifecycleComponent mariaDB = client.controller(LifecycleComponent.class).updateOrCreate(
             new LifecycleComponentBuilder().name("MariaDB").preInstall(downloadCommand)
                 .install("./mediawiki-tutorial/scripts/lance/mariaDB.sh install")
                 .postInstall("./mediawiki-tutorial/scripts/lance/mariaDB.sh configure")
@@ -115,7 +112,7 @@ public class MediawikiExample {
 
         //create the application
         Application application = client.controller(Application.class)
-            .create(new ApplicationBuilder().name("MediawikiApplication").build());
+            .updateOrCreate(new ApplicationBuilder().name("MediawikiApplication").build());
 
         //create the virtual machine templates
 
@@ -131,19 +128,19 @@ public class MediawikiExample {
         //create the application components
 
         ApplicationComponent loadBalancerApplicationComponent =
-            client.controller(ApplicationComponent.class).create(
+            client.controller(ApplicationComponent.class).updateOrCreate(
                 new ApplicationComponentBuilder().application(application.getId())
                     .component(loadBalancer.getId())
                     .virtualMachineTemplate(loadBalancerVirtualMachineTemplate.getId()).build());
 
         ApplicationComponent wikiApplicationComponent =
-            client.controller(ApplicationComponent.class).create(
+            client.controller(ApplicationComponent.class).updateOrCreate(
                 new ApplicationComponentBuilder().application(application.getId())
                     .component(wiki.getId())
                     .virtualMachineTemplate(wikiVirtualMachineTemplate.getId()).build());
 
         ApplicationComponent mariaDBApplicationComponent =
-            client.controller(ApplicationComponent.class).create(
+            client.controller(ApplicationComponent.class).updateOrCreate(
                 new ApplicationComponentBuilder().application(application.getId())
                     .component(mariaDB.getId())
                     .virtualMachineTemplate(mariaDBVirtualMachineTemplate.getId()).build());
@@ -151,18 +148,18 @@ public class MediawikiExample {
         //create the ports
 
         //database
-        final PortProvided mariadbprov = client.controller(PortProvided.class).create(
+        final PortProvided mariadbprov = client.controller(PortProvided.class).updateOrCreate(
             new PortProvidedBuilder().name("MARIADBPROV")
                 .applicationComponent(mariaDBApplicationComponent.getId()).port(3306).build());
         // wiki
-        final PortProvided wikiprov = client.controller(PortProvided.class).create(
+        final PortProvided wikiprov = client.controller(PortProvided.class).updateOrCreate(
             new PortProvidedBuilder().name("WIKIPROV")
                 .applicationComponent(wikiApplicationComponent.getId()).port(80).build());
-        final PortRequired wikireqmariadb = client.controller(PortRequired.class).create(
+        final PortRequired wikireqmariadb = client.controller(PortRequired.class).updateOrCreate(
             new PortRequiredBuilder().name("WIKIREQMARIADB")
                 .applicationComponent(wikiApplicationComponent.getId()).isMandatory(true).build());
         // lb
-        final PortProvided lbprov = client.controller(PortProvided.class).create(
+        final PortProvided lbprov = client.controller(PortProvided.class).updateOrCreate(
             new PortProvidedBuilder().name("LBPROV")
                 .applicationComponent(loadBalancerApplicationComponent.getId()).port(80).build());
 
@@ -170,7 +167,7 @@ public class MediawikiExample {
         PortRequired loadbalancerreqwiki;
         switch (lb) {
             case NGINX:
-                loadbalancerreqwiki = client.controller(PortRequired.class).create(
+                loadbalancerreqwiki = client.controller(PortRequired.class).updateOrCreate(
                     new PortRequiredBuilder().name("LOADBALANCERREQWIKI")
                         .applicationComponent(loadBalancerApplicationComponent.getId())
                         .isMandatory(false)
@@ -178,7 +175,7 @@ public class MediawikiExample {
                         .build());
                 break;
             case HAPROXY:
-                loadbalancerreqwiki = client.controller(PortRequired.class).create(
+                loadbalancerreqwiki = client.controller(PortRequired.class).updateOrCreate(
                     new PortRequiredBuilder().name("LOADBALANCERREQWIKI")
                         .applicationComponent(loadBalancerApplicationComponent.getId())
                         .isMandatory(false)
@@ -193,28 +190,31 @@ public class MediawikiExample {
         //create the communication
 
         // wiki communicates with database
-        final Communication wikiWithDB = client.controller(Communication.class).create(
+        final Communication wikiWithDB = client.controller(Communication.class).updateOrCreate(
             new CommunicationBuilder().providedPort(mariadbprov.getId())
                 .requiredPort(wikireqmariadb.getId()).build());
         //lb communicates with wiki
-        final Communication lbWithWiki = client.controller(Communication.class).create(
+        final Communication lbWithWiki = client.controller(Communication.class).updateOrCreate(
             new CommunicationBuilder().providedPort(wikiprov.getId())
                 .requiredPort(loadbalancerreqwiki.getId()).build());
 
         // create the virtual machines
 
-        final VirtualMachine mariaDBVM = client.controller(VirtualMachine.class).create(
-            VirtualMachineBuilder.of(mariaDBVirtualMachineTemplate).name("mariaDBVM").build());
+        Random random = new Random();
 
-        final VirtualMachine wikiVM = client.controller(VirtualMachine.class)
-            .create(VirtualMachineBuilder.of(wikiVirtualMachineTemplate).name("wikiVM").build());
+        final VirtualMachine mariaDBVM = client.controller(VirtualMachine.class).create(
+            VirtualMachineBuilder.of(mariaDBVirtualMachineTemplate).name("mariaDBVM"+random.nextInt(100)).build());
+
+        final VirtualMachine wikiVM = client.controller(VirtualMachine.class).create(
+            VirtualMachineBuilder.of(wikiVirtualMachineTemplate).name("wikiVM"+random.nextInt(100)).build());
 
         final VirtualMachine lbVM = client.controller(VirtualMachine.class).create(
-            VirtualMachineBuilder.of(loadBalancerVirtualMachineTemplate).name("lbVM").build());
+            VirtualMachineBuilder.of(loadBalancerVirtualMachineTemplate).name("lbVM"+random.nextInt(100)).build());
 
         // create the application instance
         final ApplicationInstance appInstance = client.controller(ApplicationInstance.class)
-            .create(new ApplicationInstanceBuilder().application(application.getId()).build());
+            .create(
+                new ApplicationInstanceBuilder().application(application.getId()).build());
 
         // create the instances
 
@@ -239,23 +239,23 @@ public class MediawikiExample {
          * Windows and schedules
          */
         final Schedule tenSeconds = client.controller(Schedule.class)
-            .create(new ScheduleBuilder().interval(10L).timeUnit(TimeUnit.SECONDS).build());
-        final TimeWindow minuteWindow = client.controller(TimeWindow.class)
-            .create(new TimeWindowBuilder().interval(1L).timeUnit(TimeUnit.MINUTES).build());
-        final TimeWindow tenSecondWindow = client.controller(TimeWindow.class)
-            .create(new TimeWindowBuilder().interval(10L).timeUnit(TimeUnit.SECONDS).build());
+            .updateOrCreate(new ScheduleBuilder().interval(10L).timeUnit(TimeUnit.SECONDS).build());
+        final TimeWindow minuteWindow = client.controller(TimeWindow.class).updateOrCreate(
+            new TimeWindowBuilder().interval(1L).timeUnit(TimeUnit.MINUTES).build());
+        final TimeWindow tenSecondWindow = client.controller(TimeWindow.class).updateOrCreate(
+            new TimeWindowBuilder().interval(10L).timeUnit(TimeUnit.SECONDS).build());
         final FormulaQuantifier relativeOneFormulaQuantifier =
             client.controller(FormulaQuantifier.class)
-                .create(new FormulaQuantifierBuilder().relative(true).value(1.0).build());
+                .updateOrCreate(new FormulaQuantifierBuilder().relative(true).value(1.0).build());
 
         /**
          * Scaling rules
          */
         final ComponentHorizontalOutScalingAction scaleWiki =
-            client.controller(ComponentHorizontalOutScalingAction.class).create(
+            client.controller(ComponentHorizontalOutScalingAction.class).updateOrCreate(
                 new ComponentHorizontalOutScalingActionBuilder().amount(1L)
-                    .applicationComponent(wikiApplicationComponent.getId()).count(0L).max(3L)
-                    .min(1L).build());
+                    .applicationComponent(wikiApplicationComponent.getId()).count(0L)
+                    .max(maxInstances).min(1L).build());
 
 
 
@@ -263,42 +263,43 @@ public class MediawikiExample {
          * Sensors
          */
         final SensorDescription cpuUsageDescription = client.controller(SensorDescription.class)
-            .create(new SensorDescriptionBuilder()
+            .updateOrCreate(new SensorDescriptionBuilder()
                 .className("de.uniulm.omi.cloudiator.visor.sensors.SystemCpuUsageSensor")
                 .isVmSensor(true).metricName("wikiCpuUsage").build());
         final SensorDescription apacheRequestDescription =
-            client.controller(SensorDescription.class).create(new SensorDescriptionBuilder()
+            client.controller(SensorDescription.class).updateOrCreate(new SensorDescriptionBuilder()
                 .className("de.uniulm.omi.cloudiator.visor.sensors.apache.ApacheStatusSensor")
                 .isVmSensor(true).metricName("apacheRequestsPerSecond").build());
 
         final SensorConfigurations cpuUsageConfiguration =
             client.controller(SensorConfigurations.class)
-                .create(new SensorConfigurationsBuilder().build());
+                .updateOrCreate(new SensorConfigurationsBuilder().build());
         final SensorConfigurations apacheRequestConfiguration =
-            client.controller(SensorConfigurations.class).create(new SensorConfigurationsBuilder()
-                .addConfig(KeyValue.of("apache.status.metric", "CURRENT_REQ_PER_SEC")).build());
+            client.controller(SensorConfigurations.class).updateOrCreate(
+                new SensorConfigurationsBuilder()
+                    .addConfig(KeyValue.of("apache.status.metric", "CURRENT_REQ_PER_SEC")).build());
 
 
-        final RawMonitor wikiCPUUsage = client.controller(RawMonitor.class).create(
+        final RawMonitor wikiCPUUsage = client.controller(RawMonitor.class).updateOrCreate(
             new RawMonitorBuilder().component(wiki.getId()).schedule(tenSeconds.getId())
                 .sensorConfigurations(cpuUsageConfiguration.getId())
                 .sensorDescription(cpuUsageDescription.getId()).build());
-        final RawMonitor apacheRequest = client.controller(RawMonitor.class).create(
+        final RawMonitor apacheRequest = client.controller(RawMonitor.class).updateOrCreate(
             new RawMonitorBuilder().component(wiki.getId()).schedule(tenSeconds.getId())
                 .sensorConfigurations(apacheRequestConfiguration.getId())
                 .sensorDescription(apacheRequestDescription.getId()).build());
 
         final ComposedMonitor averageWikiCpuUsage1Minute = client.controller(ComposedMonitor.class)
-            .create(new ComposedMonitorBuilder().addMonitor(wikiCPUUsage.getId())
+            .updateOrCreate(new ComposedMonitorBuilder().addMonitor(wikiCPUUsage.getId())
                 .window(minuteWindow.getId()).flowOperator(FlowOperator.MAP)
                 .function(FormulaOperator.AVG).quantifier(relativeOneFormulaQuantifier.getId())
                 .schedule(tenSeconds.getId()).build());
 
         final ConstantMonitor thresholdMonitor = client.controller(ConstantMonitor.class)
-            .create(new ConstantMonitorBuilder().value(threshold).build());
+            .updateOrCreate(new ConstantMonitorBuilder().value(threshold).build());
 
         final ComposedMonitor averageWikiCpuUsageIsAboveThreshold =
-            client.controller(ComposedMonitor.class).create(
+            client.controller(ComposedMonitor.class).updateOrCreate(
                 new ComposedMonitorBuilder().addMonitor(averageWikiCpuUsage1Minute.getId())
                     .addMonitor(thresholdMonitor.getId()).schedule(tenSeconds.getId())
                     .window(tenSecondWindow.getId()).flowOperator(FlowOperator.MAP)
@@ -306,7 +307,7 @@ public class MediawikiExample {
                     .build());
 
         final ComposedMonitor countWikiCpuUsageIsAboveThreshold =
-            client.controller(ComposedMonitor.class).create(
+            client.controller(ComposedMonitor.class).updateOrCreate(
                 new ComposedMonitorBuilder().addMonitor(averageWikiCpuUsageIsAboveThreshold.getId())
                     .schedule(tenSeconds.getId()).window(tenSecondWindow.getId())
                     .flowOperator(FlowOperator.REDUCE).function(FormulaOperator.SUM)
@@ -314,7 +315,7 @@ public class MediawikiExample {
                     .addScalingAction(scaleWiki.getId()).build());
 
         final MonitorSubscription atLeastOneWikiCpuUsageisAboveThreshold =
-            client.controller(MonitorSubscription.class).create(
+            client.controller(MonitorSubscription.class).updateOrCreate(
                 new MonitorSubscriptionBuilder().type(SubscriptionType.SCALING)
                     .monitor(countWikiCpuUsageIsAboveThreshold.getId()).filterType(FilterType.GTE)
                     .filterValue(minInstancesAboveThreshold).endpoint("http://localhost:9000/api")

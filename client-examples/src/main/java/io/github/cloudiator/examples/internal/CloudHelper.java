@@ -47,7 +47,7 @@ public class CloudHelper {
         visitors.add(new CreateCloud(client));
         visitors.add(new CreateCloudProperties(client));
         visitors.add(new CreateCloudCredential(client));
-        visitors.add(new UpdateImage(client));
+        visitors.add(new UpdateImageLogin(client));
         //add properties
 
     }
@@ -92,7 +92,7 @@ public class CloudHelper {
             }, WAIT_TIMEOUT_MIN, TimeUnit.MINUTES).get();
 
 
-        return client.controller(VirtualMachineTemplate.class).create(
+        return client.controller(VirtualMachineTemplate.class).updateOrCreate(
             new VirtualMachineTemplateBuilder().cloud(cloud.getId()).location(location.getId())
                 .image(image.getId()).hardware(hardware.getId()).build());
     }
@@ -110,7 +110,7 @@ public class CloudHelper {
         }
 
         @Override public void visit(ConfigurationLoader.CloudConfiguration cloudConfiguration) {
-            client.controller(Api.class).create(
+            client.controller(Api.class).updateOrCreate(
                 new ApiBuilder().name(cloudConfiguration.getApiName())
                     .internalProviderName(cloudConfiguration.getApiInternalProvider()).build());
         }
@@ -133,7 +133,7 @@ public class CloudHelper {
                     return input.getName().equals(cloudConfiguration.getApiName());
                 }
             }).get();
-            client.controller(Cloud.class).create(
+            client.controller(Cloud.class).updateOrCreate(
                 new CloudBuilder().api(api.getId()).endpoint(cloudConfiguration.getEndpoint())
                     .name(cloudConfiguration.getName()).build());
         }
@@ -158,7 +158,7 @@ public class CloudHelper {
             }).get();
 
             for (Map.Entry<String, String> entry : cloudConfiguration.getProperties().entrySet()) {
-                client.controller(CloudProperty.class).create(
+                client.controller(CloudProperty.class).updateOrCreate(
                     new CloudPropertyBuilder().cloud(cloud.getId()).key(entry.getKey())
                         .value(entry.getValue()).build());
             }
@@ -190,7 +190,7 @@ public class CloudHelper {
                     return input.getName().equals(cloudConfiguration.getName());
                 }
             }).get();
-            client.controller(CloudCredential.class).create(
+            client.controller(CloudCredential.class).updateOrCreate(
                 new CloudCredentialBuilder().cloud(cloud.getId())
                     .secret(cloudConfiguration.getCredentialPassword())
                     .user(cloudConfiguration.getCredentialUsername()).tenant(tenant.getId())
@@ -199,11 +199,11 @@ public class CloudHelper {
     }
 
 
-    class UpdateImage implements CloudConfigurationVisitor {
+    class UpdateImageLogin implements CloudConfigurationVisitor {
 
         private final Client client;
 
-        UpdateImage(Client client) {
+        public UpdateImageLogin(Client client) {
             this.client = client;
         }
 
@@ -224,29 +224,12 @@ public class CloudHelper {
                 }
             }, 3, TimeUnit.MINUTES).get();
 
-            if (image.getOperatingSystem() == null) {
-                OperatingSystem operatingSystem = client.controller(OperatingSystem.class)
-                    .getList(new Predicate<OperatingSystem>() {
-                        @Override public boolean apply(@Nullable OperatingSystem input) {
-                            checkNotNull(input);
-                            final OperatingSystemVendor operatingSystemVendor =
-                                client.controller(OperatingSystemVendor.class)
-                                    .getSingle(new Predicate<OperatingSystemVendor>() {
-                                        @Override public boolean apply(
-                                            @Nullable OperatingSystemVendor input) {
-                                            checkNotNull(input);
-                                            return input.getName().equals(
-                                                cloudConfiguration.getImageOperatingSystemVendor());
-                                        }
-                                    }).get();
-                            return input.getOperatingSystemVendor()
-                                .equals(operatingSystemVendor.getId());
-                        }
-                    }).get(0);
-                image.setOperatingSystem(operatingSystem.getId());
-                client.controller(Image.class).update(image);
+            if (image.getDefaultLoginPassword() == null || !image.getDefaultLoginPassword()
+                .equals(cloudConfiguration.getImageLoginName())) {
+                image.setDefaultLoginPassword(cloudConfiguration.getImageLoginName());
             }
 
+            client.controller(Image.class).update(image);
         }
     }
 
