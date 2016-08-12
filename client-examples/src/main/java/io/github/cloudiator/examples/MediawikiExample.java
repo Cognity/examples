@@ -42,10 +42,10 @@ public class MediawikiExample {
 
 
     private static final LB lb = LB.HAPROXY;
-    /* TODO correct these values: */
-    private static double threshold = 70;
-    private static double minInstancesAboveThreshold = 1;
-    private static long maxInstances = 5;
+
+    private static final boolean monitoringEnabled = false;
+    private static final boolean cleanup = true;
+
 
     public static void main(String[] args) throws IOException {
 
@@ -203,18 +203,20 @@ public class MediawikiExample {
         Random random = new Random();
 
         final VirtualMachine mariaDBVM = client.controller(VirtualMachine.class).create(
-            VirtualMachineBuilder.of(mariaDBVirtualMachineTemplate).name("mariaDBVM"+random.nextInt(100)).build());
+            VirtualMachineBuilder.of(mariaDBVirtualMachineTemplate)
+                .name("mariaDBVM" + random.nextInt(100)).build());
 
         final VirtualMachine wikiVM = client.controller(VirtualMachine.class).create(
-            VirtualMachineBuilder.of(wikiVirtualMachineTemplate).name("wikiVM"+random.nextInt(100)).build());
+            VirtualMachineBuilder.of(wikiVirtualMachineTemplate)
+                .name("wikiVM" + random.nextInt(100)).build());
 
         final VirtualMachine lbVM = client.controller(VirtualMachine.class).create(
-            VirtualMachineBuilder.of(loadBalancerVirtualMachineTemplate).name("lbVM"+random.nextInt(100)).build());
+            VirtualMachineBuilder.of(loadBalancerVirtualMachineTemplate)
+                .name("lbVM" + random.nextInt(100)).build());
 
         // create the application instance
         final ApplicationInstance appInstance = client.controller(ApplicationInstance.class)
-            .create(
-                new ApplicationInstanceBuilder().application(application.getId()).build());
+            .create(new ApplicationInstanceBuilder().application(application.getId()).build());
 
         // create the instances
 
@@ -235,91 +237,108 @@ public class MediawikiExample {
         waitForInstance(client, wikiInstance);
         waitForInstance(client, dbInstance);
 
-        /**
-         * Windows and schedules
-         */
-        final Schedule tenSeconds = client.controller(Schedule.class)
-            .updateOrCreate(new ScheduleBuilder().interval(10L).timeUnit(TimeUnit.SECONDS).build());
-        final TimeWindow minuteWindow = client.controller(TimeWindow.class).updateOrCreate(
-            new TimeWindowBuilder().interval(1L).timeUnit(TimeUnit.MINUTES).build());
-        final TimeWindow tenSecondWindow = client.controller(TimeWindow.class).updateOrCreate(
-            new TimeWindowBuilder().interval(10L).timeUnit(TimeUnit.SECONDS).build());
-        final FormulaQuantifier relativeOneFormulaQuantifier =
-            client.controller(FormulaQuantifier.class)
-                .updateOrCreate(new FormulaQuantifierBuilder().relative(true).value(1.0).build());
+        if (monitoringEnabled) {
 
-        /**
-         * Scaling rules
-         */
-        final ComponentHorizontalOutScalingAction scaleWiki =
-            client.controller(ComponentHorizontalOutScalingAction.class).updateOrCreate(
-                new ComponentHorizontalOutScalingActionBuilder().amount(1L)
-                    .applicationComponent(wikiApplicationComponent.getId()).count(0L)
-                    .max(maxInstances).min(1L).build());
+            /**
+             * Windows and schedules
+             */
+            final Schedule tenSeconds = client.controller(Schedule.class).updateOrCreate(
+                new ScheduleBuilder().interval(10L).timeUnit(TimeUnit.SECONDS).build());
+            final TimeWindow minuteWindow = client.controller(TimeWindow.class).updateOrCreate(
+                new TimeWindowBuilder().interval(1L).timeUnit(TimeUnit.MINUTES).build());
+            final TimeWindow tenSecondWindow = client.controller(TimeWindow.class).updateOrCreate(
+                new TimeWindowBuilder().interval(10L).timeUnit(TimeUnit.SECONDS).build());
+            final FormulaQuantifier relativeOneFormulaQuantifier =
+                client.controller(FormulaQuantifier.class).updateOrCreate(
+                    new FormulaQuantifierBuilder().relative(true).value(1.0).build());
 
-
-
-        /**
-         * Sensors
-         */
-        final SensorDescription cpuUsageDescription = client.controller(SensorDescription.class)
-            .updateOrCreate(new SensorDescriptionBuilder()
-                .className("de.uniulm.omi.cloudiator.visor.sensors.SystemCpuUsageSensor")
-                .isVmSensor(true).metricName("wikiCpuUsage").build());
-        final SensorDescription apacheRequestDescription =
-            client.controller(SensorDescription.class).updateOrCreate(new SensorDescriptionBuilder()
-                .className("de.uniulm.omi.cloudiator.visor.sensors.apache.ApacheStatusSensor")
-                .isVmSensor(true).metricName("apacheRequestsPerSecond").build());
-
-        final SensorConfigurations cpuUsageConfiguration =
-            client.controller(SensorConfigurations.class)
-                .updateOrCreate(new SensorConfigurationsBuilder().build());
-        final SensorConfigurations apacheRequestConfiguration =
-            client.controller(SensorConfigurations.class).updateOrCreate(
-                new SensorConfigurationsBuilder()
-                    .addConfig(KeyValue.of("apache.status.metric", "CURRENT_REQ_PER_SEC")).build());
+            /**
+             * Scaling rules
+             */
+            final ComponentHorizontalOutScalingAction scaleWiki =
+                client.controller(ComponentHorizontalOutScalingAction.class).updateOrCreate(
+                    new ComponentHorizontalOutScalingActionBuilder().amount(1L)
+                        .applicationComponent(wikiApplicationComponent.getId()).count(0L).max(5L)
+                        .min(1L).build());
 
 
-        final RawMonitor wikiCPUUsage = client.controller(RawMonitor.class).updateOrCreate(
-            new RawMonitorBuilder().component(wiki.getId()).schedule(tenSeconds.getId())
-                .sensorConfigurations(cpuUsageConfiguration.getId())
-                .sensorDescription(cpuUsageDescription.getId()).build());
-        final RawMonitor apacheRequest = client.controller(RawMonitor.class).updateOrCreate(
-            new RawMonitorBuilder().component(wiki.getId()).schedule(tenSeconds.getId())
-                .sensorConfigurations(apacheRequestConfiguration.getId())
-                .sensorDescription(apacheRequestDescription.getId()).build());
 
-        final ComposedMonitor averageWikiCpuUsage1Minute = client.controller(ComposedMonitor.class)
-            .updateOrCreate(new ComposedMonitorBuilder().addMonitor(wikiCPUUsage.getId())
-                .window(minuteWindow.getId()).flowOperator(FlowOperator.MAP)
-                .function(FormulaOperator.AVG).quantifier(relativeOneFormulaQuantifier.getId())
-                .schedule(tenSeconds.getId()).build());
+            /**
+             * Sensors
+             */
+            final SensorDescription cpuUsageDescription = client.controller(SensorDescription.class)
+                .updateOrCreate(new SensorDescriptionBuilder()
+                    .className("de.uniulm.omi.cloudiator.visor.sensors.SystemCpuUsageSensor")
+                    .isVmSensor(true).metricName("wikiCpuUsage").build());
+            final SensorDescription apacheRequestDescription =
+                client.controller(SensorDescription.class).updateOrCreate(
+                    new SensorDescriptionBuilder().className(
+                        "de.uniulm.omi.cloudiator.visor.sensors.apache.ApacheStatusSensor")
+                        .isVmSensor(true).metricName("apacheRequestsPerSecond").build());
 
-        final ConstantMonitor thresholdMonitor = client.controller(ConstantMonitor.class)
-            .updateOrCreate(new ConstantMonitorBuilder().value(threshold).build());
+            final SensorConfigurations cpuUsageConfiguration =
+                client.controller(SensorConfigurations.class)
+                    .updateOrCreate(new SensorConfigurationsBuilder().build());
+            final SensorConfigurations apacheRequestConfiguration =
+                client.controller(SensorConfigurations.class).updateOrCreate(
+                    new SensorConfigurationsBuilder()
+                        .addConfig(KeyValue.of("apache.status.metric", "CURRENT_REQ_PER_SEC"))
+                        .build());
 
-        final ComposedMonitor averageWikiCpuUsageIsAboveThreshold =
-            client.controller(ComposedMonitor.class).updateOrCreate(
-                new ComposedMonitorBuilder().addMonitor(averageWikiCpuUsage1Minute.getId())
-                    .addMonitor(thresholdMonitor.getId()).schedule(tenSeconds.getId())
-                    .window(tenSecondWindow.getId()).flowOperator(FlowOperator.MAP)
-                    .quantifier(relativeOneFormulaQuantifier.getId()).function(FormulaOperator.GTE)
-                    .build());
 
-        final ComposedMonitor countWikiCpuUsageIsAboveThreshold =
-            client.controller(ComposedMonitor.class).updateOrCreate(
-                new ComposedMonitorBuilder().addMonitor(averageWikiCpuUsageIsAboveThreshold.getId())
+            final RawMonitor wikiCPUUsage = client.controller(RawMonitor.class).updateOrCreate(
+                new RawMonitorBuilder().component(wiki.getId()).schedule(tenSeconds.getId())
+                    .sensorConfigurations(cpuUsageConfiguration.getId())
+                    .sensorDescription(cpuUsageDescription.getId()).build());
+            final RawMonitor apacheRequest = client.controller(RawMonitor.class).updateOrCreate(
+                new RawMonitorBuilder().component(wiki.getId()).schedule(tenSeconds.getId())
+                    .sensorConfigurations(apacheRequestConfiguration.getId())
+                    .sensorDescription(apacheRequestDescription.getId()).build());
+
+            final ComposedMonitor averageWikiCpuUsage1Minute =
+                client.controller(ComposedMonitor.class).updateOrCreate(
+                    new ComposedMonitorBuilder().addMonitor(wikiCPUUsage.getId())
+                        .window(minuteWindow.getId()).flowOperator(FlowOperator.MAP)
+                        .function(FormulaOperator.AVG)
+                        .quantifier(relativeOneFormulaQuantifier.getId())
+                        .schedule(tenSeconds.getId()).build());
+
+            final ConstantMonitor thresholdMonitor = client.controller(ConstantMonitor.class)
+                .updateOrCreate(new ConstantMonitorBuilder().value(70d).build());
+
+            final ComposedMonitor averageWikiCpuUsageIsAboveThreshold =
+                client.controller(ComposedMonitor.class).updateOrCreate(
+                    new ComposedMonitorBuilder().addMonitor(averageWikiCpuUsage1Minute.getId())
+                        .addMonitor(thresholdMonitor.getId()).schedule(tenSeconds.getId())
+                        .window(tenSecondWindow.getId()).flowOperator(FlowOperator.MAP)
+                        .quantifier(relativeOneFormulaQuantifier.getId())
+                        .function(FormulaOperator.GTE).build());
+
+            final ComposedMonitor countWikiCpuUsageIsAboveThreshold =
+                client.controller(ComposedMonitor.class).updateOrCreate(new ComposedMonitorBuilder()
+                    .addMonitor(averageWikiCpuUsageIsAboveThreshold.getId())
                     .schedule(tenSeconds.getId()).window(tenSecondWindow.getId())
                     .flowOperator(FlowOperator.REDUCE).function(FormulaOperator.SUM)
                     .quantifier(relativeOneFormulaQuantifier.getId())
                     .addScalingAction(scaleWiki.getId()).build());
 
-        final MonitorSubscription atLeastOneWikiCpuUsageisAboveThreshold =
-            client.controller(MonitorSubscription.class).updateOrCreate(
-                new MonitorSubscriptionBuilder().type(SubscriptionType.SCALING)
-                    .monitor(countWikiCpuUsageIsAboveThreshold.getId()).filterType(FilterType.GTE)
-                    .filterValue(minInstancesAboveThreshold).endpoint("http://localhost:9000/api")
-                    .build());
+            final MonitorSubscription atLeastOneWikiCpuUsageisAboveThreshold =
+                client.controller(MonitorSubscription.class).updateOrCreate(
+                    new MonitorSubscriptionBuilder().type(SubscriptionType.SCALING)
+                        .monitor(countWikiCpuUsageIsAboveThreshold.getId())
+                        .filterType(FilterType.GTE).filterValue(1d)
+                        .endpoint("http://localhost:9000/api").build());
+        }
+
+        if (cleanup) {
+            client.controller(Instance.class).delete(lbInstance);
+            client.controller(Instance.class).delete(wikiInstance);
+            client.controller(Instance.class).delete(dbInstance);
+
+            client.controller(VirtualMachine.class).delete(lbVM);
+            client.controller(VirtualMachine.class).delete(wikiVM);
+            client.controller(VirtualMachine.class).delete(mariaDBVM);
+        }
     }
 
     private static ConfigurationLoader.CloudConfiguration random(
