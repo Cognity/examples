@@ -46,8 +46,8 @@ public class ConfigurationLoader {
             builder
                 .locationId(Sets.newHashSet(config.loadList(cloud + ".location.providerId").get()));
             builder.hardwareId(config.getString(cloud + ".hardware.providerId").get());
-            builder.properties(config.loadMap(cloud + ".properties").get());
-            //todo check
+            builder.properties(
+                config.loadMap(cloud + ".properties").or(Collections.<String, String>emptyMap()));
             configurations.add(builder.createCloudConfiguration());
         }
 
@@ -74,6 +74,9 @@ public class ConfigurationLoader {
 
         @Override public Optional<String> getString(String key) {
             String property = properties.getProperty(key);
+            if (property.isEmpty()) {
+                property = null;
+            }
             if (property != null) {
                 property = property.trim();
             }
