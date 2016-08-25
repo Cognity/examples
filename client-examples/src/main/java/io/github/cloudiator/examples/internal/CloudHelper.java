@@ -37,7 +37,7 @@ public class CloudHelper {
 
     private final static long WAIT_TIMEOUT_MIN = 3;
 
-    public Set<CloudConfigurationVisitor> visitors;
+    private Set<CloudConfigurationVisitor> visitors;
     private final Client client;
 
     public CloudHelper(Client client) {
@@ -97,7 +97,7 @@ public class CloudHelper {
                 .image(image.getId()).hardware(hardware.getId()).build());
     }
 
-    public interface CloudConfigurationVisitor {
+    interface CloudConfigurationVisitor {
         void visit(ConfigurationLoader.CloudConfiguration cloudConfiguration);
     }
 
@@ -105,7 +105,7 @@ public class CloudHelper {
     class CreateApi implements CloudConfigurationVisitor {
         private final Client client;
 
-        public CreateApi(Client client) {
+        CreateApi(Client client) {
             this.client = client;
         }
 
@@ -121,7 +121,7 @@ public class CloudHelper {
 
         private final Client client;
 
-        public CreateCloud(Client client) {
+        CreateCloud(Client client) {
             this.client = client;
         }
 
@@ -140,7 +140,7 @@ public class CloudHelper {
     }
 
 
-    class CreateCloudProperties implements CloudConfigurationVisitor {
+    private class CreateCloudProperties implements CloudConfigurationVisitor {
 
         private final Client client;
 
@@ -166,7 +166,7 @@ public class CloudHelper {
     }
 
 
-    class CreateCloudCredential implements CloudConfigurationVisitor {
+    private class CreateCloudCredential implements CloudConfigurationVisitor {
 
         private final Client client;
 
@@ -199,7 +199,7 @@ public class CloudHelper {
     }
 
 
-    class UpdateImageLogin implements CloudConfigurationVisitor {
+    private class UpdateImageLogin implements CloudConfigurationVisitor {
 
         private final Client client;
 

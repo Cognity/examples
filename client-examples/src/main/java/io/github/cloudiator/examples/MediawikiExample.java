@@ -44,7 +44,7 @@ public class MediawikiExample {
     private static final LB lb = LB.HAPROXY;
 
     private static final boolean monitoringEnabled = false;
-    private static final boolean cleanup = true;
+    private static final boolean cleanup = false;
 
 
     public static void main(String[] args) throws IOException {
@@ -198,13 +198,18 @@ public class MediawikiExample {
             new CommunicationBuilder().providedPort(wikiprov.getId())
                 .requiredPort(loadbalancerreqwiki.getId()).build());
 
-        // create the virtual machines
+        final TemplateOptions templateOptions = client.controller(TemplateOptions.class).create(
+            new TemplateOptionsBuilder().addTag("started_by", "colosseum_example")
+                .userData("myUserData").build());
 
+
+        // create the virtual machines
         Random random = new Random();
 
         final VirtualMachine mariaDBVM = client.controller(VirtualMachine.class).create(
             VirtualMachineBuilder.of(mariaDBVirtualMachineTemplate)
-                .name("mariaDBVM" + random.nextInt(100)).build());
+                .name("mariaDBVM" + random.nextInt(100)).templateOptions(templateOptions.getId())
+                .build());
 
         final VirtualMachine wikiVM = client.controller(VirtualMachine.class).create(
             VirtualMachineBuilder.of(wikiVirtualMachineTemplate)
