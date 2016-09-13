@@ -43,7 +43,7 @@ public class MediawikiExample {
 
     private static final LB lb = LB.HAPROXY;
 
-    private static final boolean monitoringEnabled = false;
+    private static final boolean monitoringEnabled = true;
     private static final boolean cleanup = false;
 
 
