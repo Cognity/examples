@@ -34,7 +34,7 @@ public class ConfigurationLoader {
         for (String cloud : clouds) {
             CloudConfigurationBuilder builder = new CloudConfigurationBuilder();
             builder.name(config.getString(cloud + ".cloud.name").get());
-            builder.endpoint(config.getString(cloud + ".cloud.endpoint").get());
+            builder.endpoint(config.getString(cloud + ".cloud.endpoint").orNull());
             builder
                 .credentialUsername(config.getString(cloud + ".cloud.credential.username").get());
             builder
@@ -74,11 +74,13 @@ public class ConfigurationLoader {
 
         @Override public Optional<String> getString(String key) {
             String property = properties.getProperty(key);
-            if (property.isEmpty()) {
-                property = null;
-            }
+
             if (property != null) {
-                property = property.trim();
+                if (property.isEmpty()) {
+                    property = null;
+                } else {
+                    property = property.trim();
+                }
             }
             return Optional.fromNullable(property);
         }
