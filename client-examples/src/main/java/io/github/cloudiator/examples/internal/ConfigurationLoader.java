@@ -43,6 +43,7 @@ public class ConfigurationLoader {
             builder
                 .apiInternalProvider(config.getString(cloud + ".api.internalProviderName").get());
             builder.imageId(config.getString(cloud + ".image.providerId").get());
+            builder.imageLoginName(config.getString(cloud + ".image.loginName").orNull());
             builder
                 .locationId(Sets.newHashSet(config.loadList(cloud + ".location.providerId").get()));
             builder.hardwareId(config.getString(cloud + ".hardware.providerId").get());
@@ -124,14 +125,14 @@ public class ConfigurationLoader {
         private final String hardwareId;
         private final Set<String> locationId;
         private final String imageId;
-        private final String imageLoginName;
+        @Nullable private final String imageLoginName;
         private final Map<String, String> properties;
 
 
         public CloudConfiguration(String name, @Nullable String endpoint, String credentialUsername,
             String credentialPassword, String apiName, String apiInternalProvider,
-            String hardwareId, Set<String> locationId, String imageId, String imageLoginName,
-            Map<String, String> properties) {
+            String hardwareId, Set<String> locationId, String imageId,
+            @Nullable String imageLoginName, Map<String, String> properties) {
 
             checkNotNull(name);
             this.name = name;
@@ -201,7 +202,7 @@ public class ConfigurationLoader {
             return imageId;
         }
 
-        public String getImageLoginName() {
+        @Nullable public String getImageLoginName() {
             return imageLoginName;
         }
 

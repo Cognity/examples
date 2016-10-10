@@ -224,9 +224,8 @@ public class CloudHelper {
                 }
             }, 3, TimeUnit.MINUTES).get();
 
-            if (image.getDefaultLoginPassword() == null || !image.getDefaultLoginPassword()
-                .equals(cloudConfiguration.getImageLoginName())) {
-                image.setDefaultLoginPassword(cloudConfiguration.getImageLoginName());
+            if (cloudConfiguration.getImageLoginName() != null) {
+                image.setDefaultLoginUsername(cloudConfiguration.getImageLoginName());
             }
 
             client.controller(Image.class).update(image);
