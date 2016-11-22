@@ -20,9 +20,9 @@ public class ConfigurationLoader {
     public static Client createClient(Properties properties) {
         Configuration configuration = new ConfigurationImpl(properties);
         return ClientBuilder.getNew().credentials(configuration.getString("colosseum.user").get(),
-            configuration.getString("colosseum.tenant").get(),
-            configuration.getString("colosseum.password").get())
-            .url(configuration.getString("colosseum.url").get()).build();
+                configuration.getString("colosseum.tenant").get(),
+                configuration.getString("colosseum.password").get())
+                .url(configuration.getString("colosseum.url").get()).build();
     }
 
     public static Set<CloudConfiguration> load(Properties properties) {
@@ -36,19 +36,20 @@ public class ConfigurationLoader {
             builder.name(config.getString(cloud + ".cloud.name").get());
             builder.endpoint(config.getString(cloud + ".cloud.endpoint").orNull());
             builder
-                .credentialUsername(config.getString(cloud + ".cloud.credential.username").get());
+                    .credentialUsername(config.getString(cloud + ".cloud.credential.username").get());
             builder
-                .credentialPassword(config.getString(cloud + ".cloud.credential.password").get());
+                    .credentialPassword(config.getString(cloud + ".cloud.credential.password").get());
             builder.apiName(config.getString(cloud + ".api.name").get());
             builder
-                .apiInternalProvider(config.getString(cloud + ".api.internalProviderName").get());
+                    .apiInternalProvider(config.getString(cloud + ".api.internalProviderName").get());
             builder.imageId(config.getString(cloud + ".image.providerId").get());
             builder.imageLoginName(config.getString(cloud + ".image.loginName").orNull());
+            builder.imageOperatingSystemVendor(config.getString(cloud + ".image.operatingSystemVendor").orNull());
             builder
-                .locationId(Sets.newHashSet(config.loadList(cloud + ".location.providerId").get()));
+                    .locationId(Sets.newHashSet(config.loadList(cloud + ".location.providerId").get()));
             builder.hardwareId(config.getString(cloud + ".hardware.providerId").get());
             builder.properties(
-                config.loadMap(cloud + ".properties").or(Collections.<String, String>emptyMap()));
+                    config.loadMap(cloud + ".properties").or(Collections.<String, String>emptyMap()));
             configurations.add(builder.createCloudConfiguration());
         }
 
@@ -73,7 +74,8 @@ public class ConfigurationLoader {
             this.properties = properties;
         }
 
-        @Override public Optional<String> getString(String key) {
+        @Override
+        public Optional<String> getString(String key) {
             String property = properties.getProperty(key);
 
             if (property != null) {
@@ -86,7 +88,8 @@ public class ConfigurationLoader {
             return Optional.fromNullable(property);
         }
 
-        @Override public Optional<List<String>> loadList(String key) {
+        @Override
+        public Optional<List<String>> loadList(String key) {
             Optional<String> value = getString(key);
             if (!value.isPresent()) {
                 return Optional.absent();
@@ -98,7 +101,8 @@ public class ConfigurationLoader {
             return Optional.of(Arrays.asList(trimmedArray));
         }
 
-        @Override public Optional<Map<String, String>> loadMap(String key) {
+        @Override
+        public Optional<Map<String, String>> loadMap(String key) {
             if (!loadList(key).isPresent()) {
                 return Optional.absent();
             }
@@ -117,7 +121,8 @@ public class ConfigurationLoader {
     public static class CloudConfiguration {
 
         private final String name;
-        @Nullable private final String endpoint;
+        @Nullable
+        private final String endpoint;
         private final String credentialUsername;
         private final String credentialPassword;
         private final String apiName;
@@ -125,14 +130,17 @@ public class ConfigurationLoader {
         private final String hardwareId;
         private final Set<String> locationId;
         private final String imageId;
-        @Nullable private final String imageLoginName;
+        @Nullable
+        private final String imageLoginName;
         private final Map<String, String> properties;
+        @Nullable
+        private final String operatingSystemVendor;
 
 
         public CloudConfiguration(String name, @Nullable String endpoint, String credentialUsername,
-            String credentialPassword, String apiName, String apiInternalProvider,
-            String hardwareId, Set<String> locationId, String imageId,
-            @Nullable String imageLoginName, Map<String, String> properties) {
+                                  String credentialPassword, String apiName, String apiInternalProvider,
+                                  String hardwareId, Set<String> locationId, String imageId,
+                                  @Nullable String imageLoginName, @Nullable String operatingSystemVendor, Map<String, String> properties) {
 
             checkNotNull(name);
             this.name = name;
@@ -161,6 +169,7 @@ public class ConfigurationLoader {
             this.imageId = imageId;
 
             this.imageLoginName = imageLoginName;
+            this.operatingSystemVendor = operatingSystemVendor;
             this.properties = properties;
         }
 
@@ -168,7 +177,8 @@ public class ConfigurationLoader {
             return name;
         }
 
-        @Nullable public String getEndpoint() {
+        @Nullable
+        public String getEndpoint() {
             return endpoint;
         }
 
@@ -202,7 +212,8 @@ public class ConfigurationLoader {
             return imageId;
         }
 
-        @Nullable public String getImageLoginName() {
+        @Nullable
+        public String getImageLoginName() {
             return imageLoginName;
         }
 
@@ -210,7 +221,8 @@ public class ConfigurationLoader {
             return properties;
         }
 
-        @Override public boolean equals(Object o) {
+        @Override
+        public boolean equals(Object o) {
             if (this == o)
                 return true;
             if (o == null || getClass() != o.getClass())
@@ -222,8 +234,14 @@ public class ConfigurationLoader {
 
         }
 
-        @Override public int hashCode() {
+        @Override
+        public int hashCode() {
             return getName().hashCode();
+        }
+
+        @Nullable
+        public String operatingSystemVendor() {
+            return operatingSystemVendor;
         }
     }
 

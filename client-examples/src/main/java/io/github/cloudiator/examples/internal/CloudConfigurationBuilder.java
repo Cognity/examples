@@ -32,6 +32,7 @@ class CloudConfigurationBuilder {
     private Set<String> locationId;
     private String imageId;
     private String imageLoginName;
+    private String operatingSystemVendor;
     private Map<String, String> properties;
 
     public CloudConfigurationBuilder name(String name) {
@@ -85,6 +86,7 @@ class CloudConfigurationBuilder {
     }
 
     public CloudConfigurationBuilder imageOperatingSystemVendor(String imageOperatingSystem) {
+        this.operatingSystemVendor = imageOperatingSystem;
         return this;
     }
 
@@ -95,7 +97,7 @@ class CloudConfigurationBuilder {
 
     public ConfigurationLoader.CloudConfiguration createCloudConfiguration() {
         return new ConfigurationLoader.CloudConfiguration(name, endpoint, credentialUsername,
-            credentialPassword, apiName, apiInternalProvider, hardwareId, locationId, imageId,
-            imageLoginName, properties);
+                credentialPassword, apiName, apiInternalProvider, hardwareId, locationId, imageId,
+                imageLoginName, operatingSystemVendor, properties);
     }
 }
