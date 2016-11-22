@@ -265,10 +265,15 @@ public class MediawikiExample {
             /**
              * Scaling rules
              */
-            final ComponentHorizontalOutScalingAction scaleWiki =
+            final ComponentHorizontalOutScalingAction scaleOutWiki =
                     client.controller(ComponentHorizontalOutScalingAction.class).updateOrCreate(
                             new ComponentHorizontalOutScalingActionBuilder().amount(1L)
-                                    .applicationComponent(wikiApplicationComponent.getId()).count(0L).max(5L)
+                                    .applicationComponent(wikiApplicationComponent.getId()).count(0L).max(2L)
+                                    .min(1L).build());
+            final ComponentHorizontalInScalingAction scaleInWiki =
+                    client.controller(ComponentHorizontalInScalingAction.class).updateOrCreate(
+                            new ComponentHorizontalInScalingActionBuilder().amount(1L)
+                                    .applicationComponent(wikiApplicationComponent.getId()).count(0L).max(2L)
                                     .min(1L).build());
 
 
@@ -320,15 +325,18 @@ public class MediawikiExample {
                                     .quantifier(relativeOneFormulaQuantifier.getId())
                                     .schedule(tenSeconds.getId()).build());
 
-            final ConstantMonitor wikiThresholdMonitor = client.controller(ConstantMonitor.class)
+            final ConstantMonitor wikiThresholdMonitorScaleOut = client.controller(ConstantMonitor.class)
                     .updateOrCreate(new ConstantMonitorBuilder().value(70d).build());
+            final ConstantMonitor wikiThresholdMonitorScaleDown = client.controller(ConstantMonitor.class)
+                    .updateOrCreate(new ConstantMonitorBuilder().value(10d).build());
             final ConstantMonitor apacheThreshold = client.controller(ConstantMonitor.class)
                     .updateOrCreate(new ConstantMonitorBuilder().value(70d).build());
 
+            // ScaleOut
             final ComposedMonitor averageWikiCpuUsageIsAboveThreshold =
                     client.controller(ComposedMonitor.class).updateOrCreate(
                             new ComposedMonitorBuilder().addMonitor(averageWikiCpuUsage1Minute.getId())
-                                    .addMonitor(wikiThresholdMonitor.getId()).schedule(tenSeconds.getId())
+                                    .addMonitor(wikiThresholdMonitorScaleOut.getId()).schedule(tenSeconds.getId())
                                     .window(tenSecondWindow.getId()).flowOperator(FlowOperator.MAP)
                                     .quantifier(relativeOneFormulaQuantifier.getId())
                                     .function(FormulaOperator.GTE).build());
@@ -339,12 +347,36 @@ public class MediawikiExample {
                             .schedule(tenSeconds.getId()).window(tenSecondWindow.getId())
                             .flowOperator(FlowOperator.REDUCE).function(FormulaOperator.SUM)
                             .quantifier(relativeOneFormulaQuantifier.getId())
-                            .addScalingAction(scaleWiki.getId()).build());
+                            .addScalingAction(scaleOutWiki.getId()).build());
 
             final MonitorSubscription atLeastOneWikiCpuUsageisAboveThreshold =
                     client.controller(MonitorSubscription.class).updateOrCreate(
                             new MonitorSubscriptionBuilder().type(SubscriptionType.SCALING)
                                     .monitor(countWikiCpuUsageIsAboveThreshold.getId())
+                                    .filterType(FilterType.GTE).filterValue(1d)
+                                    .endpoint("http://localhost:9000/api").build());
+
+            // ScaleDown
+            final ComposedMonitor averageWikiCpuUsageIsBelowThreshold =
+                    client.controller(ComposedMonitor.class).updateOrCreate(
+                            new ComposedMonitorBuilder().addMonitor(averageWikiCpuUsage1Minute.getId())
+                                    .addMonitor(wikiThresholdMonitorScaleDown.getId()).schedule(tenSeconds.getId())
+                                    .window(tenSecondWindow.getId()).flowOperator(FlowOperator.MAP)
+                                    .quantifier(relativeOneFormulaQuantifier.getId())
+                                    .function(FormulaOperator.LTE).build());
+
+            final ComposedMonitor countWikiCpuUsageIsBelowThreshold =
+                    client.controller(ComposedMonitor.class).updateOrCreate(new ComposedMonitorBuilder()
+                            .addMonitor(averageWikiCpuUsageIsBelowThreshold.getId())
+                            .schedule(tenSeconds.getId()).window(tenSecondWindow.getId())
+                            .flowOperator(FlowOperator.REDUCE).function(FormulaOperator.SUM)
+                            .quantifier(relativeOneFormulaQuantifier.getId())
+                            .addScalingAction(scaleInWiki.getId()).build());
+
+            final MonitorSubscription atLeastOneWikiCpuUsageisBelowThreshold =
+                    client.controller(MonitorSubscription.class).updateOrCreate(
+                            new MonitorSubscriptionBuilder().type(SubscriptionType.SCALING)
+                                    .monitor(countWikiCpuUsageIsBelowThreshold.getId())
                                     .filterType(FilterType.GTE).filterValue(1d)
                                     .endpoint("http://localhost:9000/api").build());
         }
